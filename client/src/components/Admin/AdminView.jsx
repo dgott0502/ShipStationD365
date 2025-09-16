@@ -6,12 +6,8 @@ function AdminView() {
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchTags = async () => {
-    try {
-      const response = await getTags();
-      setTags(response.data);
-    } catch (error) {
-      console.error("Failed to fetch tags", error);
-    }
+    const response = await getTags();
+    setTags(response.data);
   };
 
   useEffect(() => {
@@ -20,12 +16,8 @@ function AdminView() {
 
   const handleRefresh = async () => {
     setIsLoading(true);
-    try {
-      await refreshTags();
-      await fetchTags();
-    } catch (error) {
-      alert('Failed to refresh tags.');
-    }
+    await refreshTags();
+    await fetchTags();
     setIsLoading(false);
   };
 
@@ -38,13 +30,12 @@ function AdminView() {
         </button>
       </div>
       <p>This is a list of all tags synced from your ShipStation account. They are updated automatically once a day.</p>
-      <div className="tag-list">
+      <ul className="tag-list">
         {tags.map(tag => (
-          <span key={tag.tag_id} className="tag-chip admin-tag">{tag.name}</span>
+          <li key={tag.tag_id}>{tag.name}</li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }
-
 export default AdminView;
