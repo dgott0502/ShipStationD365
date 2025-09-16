@@ -9,15 +9,12 @@ function OrderTable({ filter = () => true, onAction, onSelectOrder, fetcher }) {
       if (!fetcher) return;
       try {
         const response = await fetcher();
-        
-        // ADDED: Safety check to ensure the API response is an array
         if (Array.isArray(response.data)) {
           setOrders(response.data);
         } else {
+          setOrders([]);
           console.error("API response is not an array!", response.data);
-          setOrders([]); // Set to an empty array to prevent crashes
         }
-
       } catch (err) {
         setError('Failed to fetch orders. Is the backend server running?');
         console.error(err);
@@ -25,7 +22,7 @@ function OrderTable({ filter = () => true, onAction, onSelectOrder, fetcher }) {
     };
 
     fetchOrders();
-    const interval = setInterval(fetchOrders, 30000); // Refresh every 30 seconds
+    const interval = setInterval(fetchOrders, 30000);
     return () => clearInterval(interval);
   }, [fetcher]);
 
@@ -39,6 +36,7 @@ function OrderTable({ filter = () => true, onAction, onSelectOrder, fetcher }) {
         <tr>
           <th>Order #</th>
           <th>Customer</th>
+          <th>Tags</th>
           <th>Date</th>
           <th>Status</th>
           <th>Total</th>
@@ -55,6 +53,11 @@ function OrderTable({ filter = () => true, onAction, onSelectOrder, fetcher }) {
               </a>
             </td>
             <td>{order.ship_to_name}</td>
+            <td>
+              <div className="tags-cell">
+                {(order.tags || []).map(tag => <span key={tag} className="tag-chip">{tag}</span>)}
+              </div>
+            </td>
             <td>{new Date(order.order_date).toLocaleDateString()}</td>
             <td>
               <span className={`status ${order.internal_status.replace(/\s+/g, '-').toLowerCase()}`}>
@@ -66,20 +69,8 @@ function OrderTable({ filter = () => true, onAction, onSelectOrder, fetcher }) {
             {onAction && (
               <td>
                 <div className="action-buttons">
-                  <button
-                    className="action-button process"
-                    title="Process this order now"
-                    onClick={() => onAction.process(order.shipstation_order_id)}
-                  >
-                    Process
-                  </button>
-                  <button
-                    className="action-button clear"
-                    title="Clear this order from the list"
-                    onClick={() => onAction.clear(order.shipstation_order_id)}
-                  >
-                    Clear
-                  </button>
+                  <button className="action-button process" onClick={() => onAction.process(order.shipstation_order_id)}>Process</button>
+                  <button className="action-button clear" onClick={() => onAction.clear(order.shipstation_order_id)}>Clear</button>
                 </div>
               </td>
             )}

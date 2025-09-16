@@ -1,5 +1,12 @@
-// ... (imports)
-import AdminView from './components/Admin/AdminView'; // New Import
+import React from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import Navbar from './components/Layout/Navbar';
+import Dashboard from './components/Dashboard/Dashboard';
+import ApprovalsView from './components/Approvals/ApprovalsView';
+import PalletView from './components/Pallets/PalletView';
+import ArchiveView from './components/Archive/ArchiveView';
+import AdminView from './components/Admin/AdminView';
+import './assets/styles.css';
 
 function App() {
   return (
@@ -12,11 +19,12 @@ function App() {
             <Route path="/approvals" element={<ApprovalsView />} />
             <Route path="/pallets" element={<PalletView />} />
             <Route path="/archive" element={<ArchiveView />} />
-            <Route path="/admin" element={<AdminView />} /> {/* New Route */}
+            <Route path="/admin" element={<AdminView />} />
           </Routes>
         </main>
       </div>
     </Router>
   );
 }
+
 export default App;
