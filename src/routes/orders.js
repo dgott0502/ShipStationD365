@@ -5,17 +5,8 @@ const orderService = require('../services/orderService');
 
 // GET all orders for the dashboard (with added debugging)
 router.get('/', (req, res) => {
-  console.log('--- GET /api/orders route hit ---'); // Confirms the route is being called
   try {
     const orders = orderService.getAllOrders();
-    
-    // Logs the data just before sending it to the frontend
-    console.log('Data being sent to frontend:', orders); 
-    
-    if (!Array.isArray(orders)) {
-        console.error('CRITICAL: orderService.getAllOrders() did not return an array!');
-    }
-
     res.json(orders);
   } catch (error) {
     console.error("CRITICAL ERROR in GET / route:", error);
@@ -40,10 +31,15 @@ router.get('/:orderId', (req, res) => {
 });
 
 // POST to approve a specific order
-router.post('/:orderId/approve', async (req, res) => {
+router.post('/:orderId/approve', (req, res) => {
     try {
-        await orderService.approveOrder(req.params.orderId);
-        res.status(200).json({ message: 'Order approved successfully.' });
+        const { orderId } = req.params;
+        const success = orderService.approveOrder(orderId);
+        if (success) {
+            res.status(200).json({ message: 'Order approved successfully.' });
+        } else {
+            res.status(404).send('Order not found or could not be approved.');
+        }
     } catch (error) {
         res.status(500).send('Failed to process approval.');
     }
@@ -71,7 +67,7 @@ router.post('/fetch-now', async (req, res) => {
 router.post('/:orderId/process', async (req, res) => {
     try {
         await orderService.processSingleOrder(req.params.orderId);
-        res.status(200).json({ message: 'Order processed successfully.' });
+        res.status(200).json({ message: 'Order processed successfully and moved to archive.' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

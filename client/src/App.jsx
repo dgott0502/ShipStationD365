@@ -1,13 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-
-// Import Components
-import Navbar from './components/Layout/Navbar';
-import Dashboard from './components/Dashboard/Dashboard';
-import ApprovalsView from './components/Approvals/ApprovalsView';
-import PalletView from './components/Pallets/PalletView';
-import ArchiveView from './components/Archive/ArchiveView';
-import './assets/styles.css';
+// ... (imports)
+import AdminView from './components/Admin/AdminView'; // New Import
 
 function App() {
   return (
@@ -20,11 +12,11 @@ function App() {
             <Route path="/approvals" element={<ApprovalsView />} />
             <Route path="/pallets" element={<PalletView />} />
             <Route path="/archive" element={<ArchiveView />} />
+            <Route path="/admin" element={<AdminView />} /> {/* New Route */}
           </Routes>
         </main>
       </div>
     </Router>
   );
 }
-
 export default App;

@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// The base URL for your backend server
 const API_URL = 'http://localhost:3001/api';
 
 const api = axios.create({
