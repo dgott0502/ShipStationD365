@@ -1,10 +1,48 @@
 require('dotenv').config();
 
+const safeParseFloat = (value, fallback) => {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const safeParseInt = (value, fallback) => {
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 module.exports = {
   port: process.env.PORT || 3001,
   shipstation: {
-    apiKey: process.env.SHIPSTATION_API_KEY,
-    apiSecret: process.env.SHIPSTATION_API_SECRET
+    apiKey: process.env.SHIPSTATION_V1_API_KEY || process.env.SHIPSTATION_API_KEY,
+    apiSecret: process.env.SHIPSTATION_V1_API_SECRET || process.env.SHIPSTATION_API_SECRET,
+    v2ApiKey: process.env.SHIPSTATION_V2_API_KEY || process.env.SHIPSTATION_API_KEY_V2 || null,
+    defaultServiceCode: process.env.SHIPSTATION_DEFAULT_SERVICE_CODE || null,
+    defaultInsuranceProvider: process.env.SHIPSTATION_DEFAULT_INSURANCE_PROVIDER || 'carrier',
+    productSyncPageSize: safeParseInt(process.env.SHIPSTATION_PRODUCT_PAGE_SIZE, 200),
+    shipFrom: {
+      name: process.env.SHIPSTATION_SHIP_FROM_NAME || '',
+      companyName: process.env.SHIPSTATION_SHIP_FROM_COMPANY || '',
+      phone: process.env.SHIPSTATION_SHIP_FROM_PHONE || '',
+      addressLine1: process.env.SHIPSTATION_SHIP_FROM_ADDRESS1 || '',
+      addressLine2: process.env.SHIPSTATION_SHIP_FROM_ADDRESS2 || '',
+      cityLocality: process.env.SHIPSTATION_SHIP_FROM_CITY || '',
+      stateProvince: process.env.SHIPSTATION_SHIP_FROM_STATE || '',
+      postalCode: process.env.SHIPSTATION_SHIP_FROM_POSTAL_CODE || '',
+      countryCode: process.env.SHIPSTATION_SHIP_FROM_COUNTRY_CODE || 'US',
+      residentialIndicator: process.env.SHIPSTATION_SHIP_FROM_RESIDENTIAL || 'no'
+    },
+    defaultPackage: {
+      weight: {
+        value: safeParseFloat(process.env.SHIPSTATION_DEFAULT_PACKAGE_WEIGHT_VALUE, 16),
+        unit: process.env.SHIPSTATION_DEFAULT_PACKAGE_WEIGHT_UNIT || 'ounce'
+      },
+      dimensions: {
+        length: safeParseFloat(process.env.SHIPSTATION_DEFAULT_PACKAGE_LENGTH, 10),
+        width: safeParseFloat(process.env.SHIPSTATION_DEFAULT_PACKAGE_WIDTH, 10),
+        height: safeParseFloat(process.env.SHIPSTATION_DEFAULT_PACKAGE_HEIGHT, 10),
+        unit: process.env.SHIPSTATION_DEFAULT_PACKAGE_DIMENSION_UNIT || 'inch'
+      }
+    }
   },
   dynamics365: {
     url: process.env.D365_URL,
