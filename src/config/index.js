@@ -5,13 +5,20 @@ const safeParseFloat = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const safeParseInt = (value, fallback) => {
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 module.exports = {
   port: process.env.PORT || 3001,
   shipstation: {
-    apiKey: process.env.SHIPSTATION_API_KEY,
-    apiSecret: process.env.SHIPSTATION_API_SECRET,
+    apiKey: process.env.SHIPSTATION_V1_API_KEY || process.env.SHIPSTATION_API_KEY,
+    apiSecret: process.env.SHIPSTATION_V1_API_SECRET || process.env.SHIPSTATION_API_SECRET,
+    v2ApiKey: process.env.SHIPSTATION_V2_API_KEY || process.env.SHIPSTATION_API_KEY_V2 || null,
     defaultServiceCode: process.env.SHIPSTATION_DEFAULT_SERVICE_CODE || null,
     defaultInsuranceProvider: process.env.SHIPSTATION_DEFAULT_INSURANCE_PROVIDER || 'carrier',
+    productSyncPageSize: safeParseInt(process.env.SHIPSTATION_PRODUCT_PAGE_SIZE, 200),
     shipFrom: {
       name: process.env.SHIPSTATION_SHIP_FROM_NAME || '',
       companyName: process.env.SHIPSTATION_SHIP_FROM_COMPANY || '',

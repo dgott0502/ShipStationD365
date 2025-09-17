@@ -1,5 +1,6 @@
 const shipstationApi = require('../api/shipstation');
 const config = require('../config');
+const productService = require('./productService');
 
 const parseJsonArray = (value) => {
   if (!value) return [];
@@ -148,28 +149,56 @@ const parseItemInsuredValue = (item = {}) => {
   return null;
 };
 
-const buildPackageForItem = (item) => {
-  const pkg = defaultPackage();
+const deriveWeightForItem = (item, product) => {
+  if (product?.weight) {
+    return { ...product.weight };
+  }
   const weight = parseItemWeight(item);
-  if (weight) pkg.weight = weight;
+  return weight ? { ...weight } : null;
+};
+
+const deriveDimensionsForItem = (item, product) => {
+  if (product?.dimensions) {
+    return { ...product.dimensions };
+  }
   const dimensions = parseItemDimensions(item);
+  return dimensions ? { ...dimensions } : null;
+};
+
+const buildPackageForItem = (item, product) => {
+  const pkg = defaultPackage();
+  const weight = deriveWeightForItem(item, product);
+  if (weight) pkg.weight = weight;
+  const dimensions = deriveDimensionsForItem(item, product);
   if (dimensions) pkg.dimensions = dimensions;
   const insuredValue = parseItemInsuredValue(item);
   if (insuredValue) pkg.insured_value = insuredValue;
   return pkg;
 };
 
-const buildPackages = (items, multipack) => {
+const buildPackages = (items, multipack, productIndex = {}) => {
   if (!Array.isArray(items) || items.length === 0) {
     return [];
   }
+
+  const productCache = new WeakMap();
+  const resolveProduct = (item) => {
+    if (!item || typeof item !== 'object') return null;
+    if (productCache.has(item)) {
+      return productCache.get(item);
+    }
+    const found = productService.findProductForItem(item, productIndex) || null;
+    productCache.set(item, found);
+    return found;
+  };
 
   if (multipack) {
     const packages = [];
     items.forEach((item) => {
       const quantity = Math.max(1, parseNumber(item.quantity, 1));
+      const product = resolveProduct(item);
       for (let index = 0; index < quantity; index += 1) {
-        packages.push(buildPackageForItem(item));
+        packages.push(buildPackageForItem(item, product));
       }
     });
     return packages;
@@ -178,7 +207,8 @@ const buildPackages = (items, multipack) => {
   const aggregatedPackage = defaultPackage();
   const totalWeight = items.reduce((sum, item) => {
     const quantity = Math.max(1, parseNumber(item.quantity, 1));
-    return sum + convertWeightToOunces(item.weight) * quantity;
+    const product = resolveProduct(item);
+    return sum + convertWeightToOunces(product?.weight || item.weight) * quantity;
   }, 0);
 
   if (totalWeight > 0) {
@@ -188,9 +218,13 @@ const buildPackages = (items, multipack) => {
     };
   }
 
-  const dimensions = parseItemDimensions(items[0]);
-  if (dimensions) {
-    aggregatedPackage.dimensions = dimensions;
+  for (const item of items) {
+    const product = resolveProduct(item);
+    const dimensions = deriveDimensionsForItem(item, product);
+    if (dimensions) {
+      aggregatedPackage.dimensions = dimensions;
+      break;
+    }
   }
 
   return [aggregatedPackage];
@@ -331,7 +365,8 @@ const createLabelForOrder = async (orderRecord, options = {}) => {
     ? shipstationOrder.items
     : parseJsonArray(orderRecord.items_json);
 
-  const packages = ensurePackages(buildPackages(items, multipack));
+  const productIndex = productService.buildProductIndexForItems(items);
+  const packages = ensurePackages(buildPackages(items, multipack, productIndex));
   const shipTo = mapShipTo(shipstationOrder, orderRecord);
   const shipFrom = mapShipFrom(shipstationOrder);
 
