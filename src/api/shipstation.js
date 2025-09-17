@@ -29,4 +29,26 @@ const fetchTags = async () => {
   }
 };
 
-module.exports = { fetchAwaitingShipmentOrders, fetchTags };
+const fetchOrderById = async (orderId) => {
+  try {
+    const response = await shipstationAPI.get(`/orders/${orderId}`);
+    return response.data;
+  } catch (error) {
+    const details = error.response?.data || error.message;
+    console.error(`Error fetching order ${orderId} from ShipStation:`, details);
+    throw error;
+  }
+};
+
+const createLabel = async (payload) => {
+  try {
+    const response = await shipstationAPI.post('/v2/labels', payload);
+    return response.data;
+  } catch (error) {
+    const details = error.response?.data || error.message;
+    console.error('Error creating label in ShipStation:', details);
+    throw error;
+  }
+};
+
+module.exports = { fetchAwaitingShipmentOrders, fetchTags, fetchOrderById, createLabel };

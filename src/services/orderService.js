@@ -1,5 +1,6 @@
 const db = require('../database');
 const d365Api = require('../api/dynamics365');
+const labelService = require('./labelService');
 
 let isAutoLabelingEnabled = true;
 
@@ -81,12 +82,40 @@ const processReadyOrders = async () => {
 };
 
 const processSingleOrder = async (orderId, orderRow = null) => {
-    const orderData = orderRow || db.prepare("SELECT * FROM orders WHERE shipstation_order_id = ?").get(orderId);
-    if (!orderData) throw new Error('Order not found for processing.');
+  const orderData = orderRow || db.prepare('SELECT * FROM orders WHERE shipstation_order_id = ?').get(orderId);
+  if (!orderData) throw new Error('Order not found for processing.');
 
-    console.log(`--- SIMULATING D365 INTEGRATION FOR ORDER: ${orderData.order_number} ---`);
-    archiveOrder(orderData.shipstation_order_id, 'Synced', orderData.order_number);
-    console.log(`Successfully SIMULATED and archived order ${orderData.order_number}.`);
+  const orderWithTags = addTagsToOrders([orderData])[0] || orderData;
+  const tags = orderWithTags.tags || [];
+  const isCaseOrder = tags.some(tag => /\bcase(s)?\b/i.test(tag));
+
+  if (isCaseOrder) {
+    console.log(`Order ${orderData.order_number} has Case tag(s); creating multipack label.`);
+  }
+
+  try {
+    const labelResult = await labelService.createLabelForOrder(orderWithTags, { multipack: isCaseOrder });
+    saveLabelUrls(orderData.shipstation_order_id, labelResult.labelUrls || []);
+  } catch (error) {
+    console.error(`Failed to generate label for order ${orderData.order_number}:`, error.message || error);
+    throw new Error('Failed to create shipping label in ShipStation.');
+  }
+
+  console.log(`--- SIMULATING D365 INTEGRATION FOR ORDER: ${orderData.order_number} ---`);
+  archiveOrder(orderData.shipstation_order_id, 'Synced', orderData.order_number);
+  console.log(`Successfully SIMULATED and archived order ${orderData.order_number}.`);
+};
+
+const parseLabelUrls = (raw) => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn('Unable to parse stored label URLs:', error.message);
+    return [];
+  }
 };
 
 const addTagsToOrders = (orders) => {
@@ -97,7 +126,8 @@ const addTagsToOrders = (orders) => {
 
   return orders.map(order => ({
     ...order,
-    tags: JSON.parse(order.tag_ids || '[]').map(id => allTags[id]).filter(Boolean)
+    tags: JSON.parse(order.tag_ids || '[]').map(id => allTags[id]).filter(Boolean),
+    labelUrls: parseLabelUrls(order.label_urls)
   }));
 };
 
@@ -110,7 +140,9 @@ const getOrderById = (shipstationOrderId) => {
   const order = db.prepare('SELECT * FROM orders WHERE shipstation_order_id = ?').get(shipstationOrderId);
   if (order) {
     order.items = JSON.parse(order.items_json || '[]');
-    order.tags = addTagsToOrders([order])[0].tags;
+    const decorated = addTagsToOrders([order])[0];
+    order.tags = decorated.tags;
+    order.labelUrls = decorated.labelUrls;
   }
   return order;
 };
@@ -118,6 +150,12 @@ const getOrderById = (shipstationOrderId) => {
 const updateOrderStatus = (shipstationOrderId, newStatus, d365SalesOrderId = null) => {
   const stmt = db.prepare('UPDATE orders SET internal_status = ?, d365_sales_order_id = ? WHERE shipstation_order_id = ?');
   return stmt.run(newStatus, d365SalesOrderId, shipstationOrderId).changes > 0;
+};
+
+const saveLabelUrls = (shipstationOrderId, labelUrls = []) => {
+  const normalized = Array.isArray(labelUrls) ? labelUrls : [];
+  const stmt = db.prepare('UPDATE orders SET label_urls = ? WHERE shipstation_order_id = ?');
+  stmt.run(JSON.stringify(normalized), shipstationOrderId);
 };
 
 const approveOrder = (orderId) => {
